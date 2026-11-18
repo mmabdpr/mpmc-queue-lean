@@ -1,0 +1,302 @@
+capacity 2
+limit 3
+push 14
+push 85
+push 64
+pop
+push 26
+push 29
+push 28
+pop
+pop
+push 49
+pop
+push 71
+push 70
+push 33
+push 20
+push 91
+push 18
+push 37
+push 12
+push 47
+push 2
+pop
+push 84
+push 87
+push 74
+pop
+pop
+push 59
+pop
+pop
+pop
+push 83
+push 26
+push 5
+push 64
+push 39
+push 2
+pop
+push 68
+push 91
+push 62
+pop
+push 64
+pop
+push 30
+push 73
+push 44
+push 99
+push 54
+pop
+push 72
+push 47
+push 62
+push 85
+push 4
+pop
+push 30
+push 45
+push 96
+push 71
+push 98
+pop
+push 72
+push 63
+push 98
+push 1
+pop
+push 3
+push 62
+pop
+pop
+pop
+push 2
+push 5
+push 0
+push 23
+push 98
+pop
+push 84
+pop
+pop
+pop
+pop
+pop
+push 94
+pop
+pop
+pop
+pop
+push 25
+push 60
+push 7
+push 6
+pop
+push 8
+pop
+push 2
+push 97
+pop
+push 83
+push 42
+push 53
+push 52
+push 19
+push 90
+push 41
+push 72
+push 15
+push 38
+pop
+push 60
+push 31
+pop
+pop
+push 24
+pop
+pop
+push 97
+push 24
+push 67
+push 22
+push 41
+pop
+pop
+push 30
+pop
+push 24
+push 55
+push 86
+push 81
+pop
+pop
+pop
+push 65
+push 76
+push 19
+push 22
+push 85
+push 44
+pop
+pop
+push 93
+push 68
+push 11
+pop
+push 33
+push 16
+push 79
+push 54
+push 49
+pop
+pop
+push 22
+push 49
+push 76
+pop
+pop
+push 9
+push 72
+push 59
+push 90
+push 1
+push 76
+push 31
+pop
+push 53
+push 48
+push 15
+pop
+push 5
+pop
+push 23
+pop
+push 49
+pop
+pop
+pop
+push 33
+push 64
+push 3
+push 58
+push 25
+push 32
+push 55
+pop
+push 89
+push 52
+push 31
+push 2
+push 29
+push 64
+pop
+push 42
+push 49
+push 76
+push 55
+pop
+push 61
+push 92
+push 55
+push 66
+push 89
+push 64
+pop
+pop
+pop
+pop
+pop
+push 26
+push 1
+pop
+pop
+pop
+push 37
+pop
+push 43
+push 26
+pop
+pop
+pop
+push 42
+push 5
+push 36
+push 27
+push 82
+push 1
+push 8
+pop
+pop
+push 57
+pop
+push 15
+push 10
+push 61
+push 8
+push 47
+push 50
+push 33
+push 32
+push 19
+pop
+push 81
+pop
+push 19
+pop
+push 97
+push 20
+pop
+pop
+push 53
+push 40
+push 99
+push 90
+push 45
+pop
+pop
+push 50
+push 1
+pop
+push 31
+pop
+push 37
+pop
+pop
+push 94
+push 17
+push 36
+push 11
+pop
+push 65
+push 16
+push 79
+pop
+pop
+pop
+pop
+push 46
+pop
+push 48
+push 7
+push 2
+push 85
+push 44
+pop
+pop
+pop
+pop
+pop
+push 6
+push 89
+push 0
+pop
+push 6
+push 5
+push 60
+pop
+pop
+push 81
+push 88
+pop

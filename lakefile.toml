@@ -1,0 +1,21 @@
+# Copyright (c) 2026 Mohammad Mahdi Abdollahpour.
+# The contents of this file are subject to the Common Public Attribution
+# License Version 1.0 (the "License"); you may not use this file except in
+# compliance with the License. You may obtain a copy of the License at
+# https://opensource.org/license/cpal-1-0.
+# The Original Code is mpmc-lean. The Initial Developer is Mohammad Mahdi
+# Abdollahpour. See LICENSE and NOTICE.
+name = "mpmc"
+version = "0.1.0"
+defaultTargets = ["Mpmc"]
+
+[[lean_lib]]
+name = "Mpmc"
+
+[[lean_exe]]
+name = "mpmc-codegen"
+root = "Mpmc.Codegen"
+
+[[lean_exe]]
+name = "mpmc-kernel-trace"
+root = "Mpmc.KernelTest"

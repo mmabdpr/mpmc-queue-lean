@@ -1,0 +1,8 @@
+# Copyright (c) 2026 Mohammad Mahdi Abdollahpour.
+# SPDX-License-Identifier: CPAL-1.0
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

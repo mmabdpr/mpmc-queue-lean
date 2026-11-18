@@ -1,0 +1,316 @@
+# Copyright (c) 2026 Mohammad Mahdi Abdollahpour.
+# SPDX-License-Identifier: CPAL-1.0
+# The contents of this file are subject to the Common Public Attribution
+# License Version 1.0 (the "License"); you may not use this file except in
+# compliance with the License. You may obtain a copy of the License at
+# https://opensource.org/license/cpal-1-0.
+# The Original Code is mpmc-lean. The Initial Developer is Mohammad Mahdi
+# Abdollahpour. See LICENSE and NOTICE.
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lean:
+    name: Lean proofs and generated files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install elan
+        run: |
+          curl --fail --location --silent --show-error \
+            https://github.com/leanprover/elan/releases/download/v4.4.0/elan-x86_64-unknown-linux-gnu.tar.gz \
+            -o "$RUNNER_TEMP/elan.tar.gz"
+          echo "0e8250aa2be86c7af929ade68db617af9edc8b9ccf6eaf5ece228250d0d032e2  $RUNNER_TEMP/elan.tar.gz" \
+            | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/elan.tar.gz" -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/elan-init" -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Build
+        run: lake build
+
+      - name: Audit proof sources
+        run: |
+          if grep -rnE '\b(sorry|admit)\b' Mpmc Mpmc.lean; then
+            echo "proof sources contain sorry or admit" >&2
+            exit 1
+          fi
+          if grep -rnE '\baxiom\b' Mpmc Mpmc.lean; then
+            echo "proof sources declare an axiom" >&2
+            exit 1
+          fi
+          lake env lean scripts/CheckAxioms.lean > "$RUNNER_TEMP/axioms.log"
+          checked="$(grep -cE 'depends on axioms|does not depend on any axioms' "$RUNNER_TEMP/axioms.log" || true)"
+          if [ "$checked" -lt 150 ]; then
+            cat "$RUNNER_TEMP/axioms.log" >&2
+            echo "axiom audit produced only $checked results" >&2
+            exit 1
+          fi
+          if grep -q 'sorryAx' "$RUNNER_TEMP/axioms.log"; then
+            cat "$RUNNER_TEMP/axioms.log" >&2
+            echo "a checked theorem depends on sorryAx" >&2
+            exit 1
+          fi
+          if ! awk 'NF && !/depends on axioms: \[(propext|Classical\.choice|Quot\.sound)(, (propext|Classical\.choice|Quot\.sound))*\]$/ && !/does not depend on any axioms$/ { bad = 1 } END { exit bad }' "$RUNNER_TEMP/axioms.log"; then
+            cat "$RUNNER_TEMP/axioms.log" >&2
+            echo "unexpected axiom dependency" >&2
+            exit 1
+          fi
+
+      - name: Check generated kernel and traces
+        run: |
+          lake exe mpmc-codegen
+          lake exe mpmc-kernel-trace
+          test -z "$(git status --porcelain -- include/mpmc/detail/kernel.inc 'tests/kernel_trace*.txt')"
+
+  c:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86_64 GCC 13
+            os: ubuntu-24.04
+            cc: gcc-13
+            cxx: g++-13
+            arch_flags: ''
+          - name: Linux x86_64 Clang 18
+            os: ubuntu-24.04
+            cc: clang-18
+            cxx: clang++-18
+            arch_flags: ''
+          - name: Linux arm64 Clang 18
+            os: ubuntu-24.04-arm
+            cc: clang-18
+            cxx: clang++-18
+            arch_flags: '-march=armv8.1-a+lse'
+          - name: macOS 15 Apple Clang
+            os: macos-15
+            cc: clang
+            cxx: clang++
+            arch_flags: ''
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Toolchain
+        run: |
+          "$CC" --version | sed -n '1p'
+          "$CXX" --version | sed -n '1p'
+          cmake --version | sed -n '1p'
+          uname -srm
+
+      - name: Configure
+        run: |
+          args=(
+            -S . -B build
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_C_COMPILER="$CC"
+            -DCMAKE_CXX_COMPILER="$CXX"
+          )
+          if [ -n "${{ matrix.arch_flags }}" ]; then
+            args+=("-DCMAKE_C_FLAGS=${{ matrix.arch_flags }}")
+            args+=("-DCMAKE_CXX_FLAGS=${{ matrix.arch_flags }}")
+          fi
+          cmake "${args[@]}"
+
+      - name: Build
+        run: cmake --build build -j 4
+
+      - name: Public header warnings
+        run: |
+          extra=''
+          case "$(uname -s):$(uname -m)" in
+            Linux:x86_64|Linux:amd64) extra='-mcx16' ;;
+            Linux:aarch64|Linux:arm64) extra='-march=armv8.1-a+lse' ;;
+          esac
+          "$CC" -std=c11 $extra -Wall -Wextra -Wpedantic -Werror \
+            -Iinclude -c tests/consumer/main.c -o /dev/null
+          "$CXX" -std=c++17 $extra -Wall -Wextra -Wpedantic -Werror \
+            -Iinclude -c tests/consumer/main.cpp -o /dev/null
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Static install and consumers
+        run: |
+          cmake --install build --prefix "$PWD/stage"
+          consumer_args=(
+            -S tests/consumer -B build-consumer
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_C_COMPILER="$CC"
+            -DCMAKE_CXX_COMPILER="$CXX"
+            -DCMAKE_PREFIX_PATH="$PWD/stage"
+          )
+          if [ -n "${{ matrix.arch_flags }}" ]; then
+            consumer_args+=("-DCMAKE_C_FLAGS=${{ matrix.arch_flags }}")
+            consumer_args+=("-DCMAKE_CXX_FLAGS=${{ matrix.arch_flags }}")
+          fi
+          cmake "${consumer_args[@]}"
+          cmake --build build-consumer -j 4
+          ./build-consumer/mpmc_consumer
+          ./build-consumer/mpmc_consumer_ffi
+          ./build-consumer/mpmc_consumer_cpp
+
+      - name: Shared install and consumers
+        run: |
+          shared_args=(
+            -S . -B build-shared
+            -DCMAKE_BUILD_TYPE=Release
+            -DBUILD_SHARED_LIBS=ON
+            -DCMAKE_C_COMPILER="$CC"
+            -DCMAKE_CXX_COMPILER="$CXX"
+          )
+          if [ -n "${{ matrix.arch_flags }}" ]; then
+            shared_args+=("-DCMAKE_C_FLAGS=${{ matrix.arch_flags }}")
+            shared_args+=("-DCMAKE_CXX_FLAGS=${{ matrix.arch_flags }}")
+          fi
+          cmake "${shared_args[@]}"
+          cmake --build build-shared -j 4
+          ctest --test-dir build-shared --output-on-failure
+          cmake --install build-shared --prefix "$PWD/stage-shared"
+          consumer_args=(
+            -S tests/consumer -B build-consumer-shared
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_C_COMPILER="$CC"
+            -DCMAKE_CXX_COMPILER="$CXX"
+            -DCMAKE_PREFIX_PATH="$PWD/stage-shared"
+          )
+          if [ -n "${{ matrix.arch_flags }}" ]; then
+            consumer_args+=("-DCMAKE_C_FLAGS=${{ matrix.arch_flags }}")
+            consumer_args+=("-DCMAKE_CXX_FLAGS=${{ matrix.arch_flags }}")
+          fi
+          cmake "${consumer_args[@]}"
+          cmake --build build-consumer-shared -j 4
+          export LD_LIBRARY_PATH="$PWD/stage-shared/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          export DYLD_LIBRARY_PATH="$PWD/stage-shared/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+          ./build-consumer-shared/mpmc_consumer
+          ./build-consumer-shared/mpmc_consumer_ffi
+          ./build-consumer-shared/mpmc_consumer_cpp
+
+      - name: Native archive
+        run: |
+          archive="$PWD/stage/lib/libmpmc.a"
+          tmpdir="$(mktemp -d)"
+          (cd "$tmpdir" && ar x "$archive")
+          for obj in "$tmpdir"/*.o; do
+            if file "$obj" | grep -q 'LLVM'; then
+              echo "installed archive contains LLVM bitcode: $obj" >&2
+              exit 1
+            fi
+            if ! file "$obj" | grep -Eq 'Mach-O .*object|ELF .*relocatable'; then
+              echo "archive object is not native relocatable code: $obj" >&2
+              exit 1
+            fi
+            if command -v readelf >/dev/null &&
+               readelf -S "$obj" | grep -q 'gnu\.lto'; then
+              echo "archive object contains GCC LTO sections: $obj" >&2
+              exit 1
+            fi
+          done
+
+      - name: pkg-config consumers
+        run: |
+          if ! command -v pkg-config >/dev/null; then
+            if [ "$RUNNER_OS" = 'macOS' ]; then brew install pkgconf; fi
+          fi
+          export PKG_CONFIG_PATH="$PWD/stage/lib/pkgconfig"
+          pkg-config --cflags --libs mpmc
+          read -r -a cflags <<<"$(pkg-config --cflags mpmc)"
+          read -r -a libs <<<"$(pkg-config --libs mpmc)"
+          extra=''
+          case "$(uname -m)" in
+            aarch64|arm64) extra='-march=armv8.1-a+lse' ;;
+          esac
+          "$CC" -std=c11 $extra "${cflags[@]}" tests/consumer/main.c \
+            "${libs[@]}" -o pkg-consumer
+          "$CXX" -std=c++17 $extra "${cflags[@]}" tests/consumer/main.cpp \
+            "${libs[@]}" -o pkg-consumer-cpp
+          ./pkg-consumer
+          ./pkg-consumer-cpp
+          prefix="$(pkg-config --variable=prefix mpmc)"
+          test "$(cd "$prefix" && pwd -P)" = "$(cd "$PWD/stage" && pwd -P)"
+
+  debug:
+    name: Debug build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CC: clang-18
+      CXX: clang++-18
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Configure
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX"
+      - name: Build and test
+        run: |
+          cmake --build build -j 4
+          ctest --test-dir build --output-on-failure
+
+  sanitizers:
+    name: ASan and UBSan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      CC: clang-18
+      CXX: clang++-18
+      ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Configure
+        run: |
+          # Clang sanitizers can collide with the runner's high mmap
+          # randomization; keep the shadow range available.
+          sudo sysctl -w vm.mmap_rnd_bits=28 || true
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DMPMC_SANITIZE=ON \
+            -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX"
+      - name: Build and test
+        run: |
+          cmake --build build -j 4
+          ctest --test-dir build --output-on-failure
+
+  tsan:
+    name: ThreadSanitizer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      CC: clang-18
+      CXX: clang++-18
+      TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Configure
+        run: |
+          # Clang sanitizers can collide with the runner's high mmap
+          # randomization; keep the shadow range available.
+          sudo sysctl -w vm.mmap_rnd_bits=28 || true
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DMPMC_TSAN=ON \
+            -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX"
+      - name: Build and test
+        run: |
+          cmake --build build -j 2
+          ctest --test-dir build --output-on-failure

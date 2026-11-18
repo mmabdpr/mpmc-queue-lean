@@ -1,0 +1,502 @@
+capacity 4
+limit 4
+push 94
+pop
+push 68
+push 23
+push 90
+push 85
+push 0
+push 71
+push 2
+pop
+pop
+push 91
+push 82
+push 57
+push 88
+push 99
+push 94
+push 85
+push 28
+push 43
+push 2
+pop
+pop
+push 47
+pop
+push 57
+pop
+push 3
+push 42
+push 57
+pop
+pop
+pop
+push 69
+push 8
+push 39
+pop
+pop
+pop
+push 27
+push 26
+push 37
+push 8
+pop
+pop
+push 45
+push 72
+push 31
+pop
+push 5
+push 36
+pop
+pop
+push 13
+push 80
+pop
+push 30
+push 93
+push 0
+push 3
+push 34
+push 41
+push 64
+push 3
+pop
+push 77
+push 48
+push 31
+pop
+push 5
+push 80
+pop
+pop
+push 45
+push 72
+push 63
+pop
+pop
+pop
+pop
+pop
+push 73
+push 60
+push 83
+push 14
+pop
+pop
+push 75
+push 66
+pop
+push 76
+push 79
+pop
+push 53
+push 76
+push 31
+pop
+pop
+push 64
+push 71
+pop
+push 1
+push 12
+push 67
+push 6
+pop
+push 72
+push 59
+push 98
+push 5
+push 8
+push 63
+push 66
+push 33
+pop
+push 95
+push 6
+pop
+push 60
+push 31
+push 46
+push 13
+push 24
+push 67
+pop
+push 97
+push 12
+push 23
+push 58
+push 1
+push 80
+push 31
+push 62
+push 29
+push 20
+push 35
+pop
+push 9
+push 88
+push 59
+push 86
+pop
+pop
+pop
+push 70
+push 5
+push 60
+push 39
+push 26
+push 1
+pop
+push 19
+push 90
+push 21
+pop
+pop
+pop
+push 5
+push 24
+push 47
+push 46
+push 21
+push 88
+push 7
+pop
+push 69
+push 60
+pop
+push 74
+push 13
+pop
+pop
+pop
+pop
+push 72
+push 99
+push 18
+push 21
+push 40
+push 47
+push 86
+pop
+pop
+push 7
+push 22
+push 17
+pop
+push 3
+pop
+push 53
+push 0
+push 67
+push 98
+push 93
+pop
+pop
+push 42
+push 33
+push 48
+push 39
+push 86
+push 37
+push 60
+push 23
+push 62
+pop
+push 48
+pop
+push 98
+push 37
+pop
+push 55
+push 18
+push 85
+push 16
+push 23
+pop
+pop
+push 32
+push 55
+push 66
+push 17
+push 32
+pop
+push 22
+push 49
+pop
+push 47
+push 26
+push 45
+push 92
+push 87
+push 66
+push 81
+push 96
+push 59
+push 62
+pop
+pop
+push 47
+push 2
+push 41
+push 32
+push 3
+push 42
+push 81
+push 52
+push 51
+pop
+push 65
+push 4
+pop
+pop
+push 41
+push 32
+push 79
+push 46
+push 25
+pop
+push 63
+push 14
+push 81
+push 32
+push 39
+push 58
+push 53
+push 48
+push 27
+push 34
+push 77
+pop
+pop
+pop
+pop
+pop
+push 59
+pop
+pop
+push 4
+pop
+pop
+push 89
+push 80
+push 91
+pop
+pop
+pop
+push 7
+push 6
+pop
+pop
+push 75
+push 10
+pop
+push 80
+push 15
+push 86
+push 5
+push 64
+pop
+push 54
+push 49
+pop
+pop
+pop
+push 37
+push 88
+pop
+push 70
+push 57
+push 92
+pop
+push 90
+pop
+push 8
+push 99
+pop
+push 93
+pop
+push 71
+push 30
+push 53
+push 24
+push 75
+push 86
+push 45
+push 4
+push 87
+push 94
+push 25
+pop
+pop
+pop
+pop
+pop
+push 23
+pop
+push 13
+pop
+pop
+pop
+push 45
+push 32
+pop
+pop
+pop
+push 28
+pop
+push 38
+pop
+push 8
+push 83
+pop
+pop
+push 88
+pop
+push 74
+push 81
+push 4
+pop
+pop
+pop
+push 52
+push 87
+push 18
+push 85
+pop
+push 55
+pop
+push 97
+pop
+push 67
+push 50
+pop
+push 60
+push 71
+push 66
+pop
+pop
+push 59
+push 34
+push 29
+pop
+pop
+push 66
+push 69
+pop
+push 91
+push 62
+pop
+push 40
+push 31
+push 50
+pop
+push 4
+push 63
+push 78
+push 25
+push 96
+pop
+push 6
+push 45
+push 20
+push 59
+pop
+push 57
+push 20
+push 71
+push 10
+push 61
+push 12
+push 39
+push 78
+push 29
+push 76
+push 99
+push 66
+push 17
+push 92
+push 87
+pop
+push 85
+push 24
+push 3
+pop
+push 21
+push 72
+pop
+pop
+push 81
+push 48
+push 71
+push 90
+push 69
+push 32
+push 51
+pop
+push 73
+pop
+push 23
+push 90
+push 5
+push 56
+push 11
+push 82
+push 13
+push 0
+pop
+push 94
+push 93
+push 40
+push 11
+pop
+push 5
+push 92
+push 67
+push 90
+push 73
+push 4
+push 79
+push 42
+push 37
+push 32
+push 39
+push 74
+push 61
+pop
+pop
+push 2
+push 21
+pop
+push 43
+pop
+push 5
+push 4
+push 23
+push 98
+push 13
+push 72
+pop
+pop
+pop
+push 16
+push 63
+pop
+push 33
+pop
+pop
+push 22
+pop
+push 52
+push 39
+push 54
+push 41
+pop
+push 19
+push 30
+push 53
+push 20
+push 35

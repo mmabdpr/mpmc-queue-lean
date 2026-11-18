@@ -1,0 +1,345 @@
+# Copyright (c) 2026 Mohammad Mahdi Abdollahpour.
+# SPDX-License-Identifier: CPAL-1.0
+# The contents of this file are subject to the Common Public Attribution
+# License Version 1.0 (the "License"); you may not use this file except in
+# compliance with the License. You may obtain a copy of the License at
+# https://opensource.org/license/cpal-1-0.
+# The Original Code is mpmc-lean. The Initial Developer is Mohammad Mahdi
+# Abdollahpour. See LICENSE and NOTICE.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing annotated release tag
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify and package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      commit: ${{ steps.metadata.outputs.commit }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Validate tag and versions
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && "$GITHUB_REF" != refs/heads/main ]]; then
+            echo "::error::Manual release dispatch must run from main." >&2
+            exit 1
+          fi
+          git fetch --force --tags origin
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          tag_type="$(git cat-file -t "refs/tags/$TAG" 2>/dev/null || true)"
+          if [[ "$tag_type" != tag ]]; then
+            echo "::error::Release tag $TAG must be annotated." >&2
+            exit 1
+          fi
+          commit="$(git rev-parse "refs/tags/$TAG^{commit}")"
+          if [[ "$commit" != "$(git rev-parse HEAD)" ]]; then
+            echo "::error::Checkout did not resolve to the release tag commit." >&2
+            exit 1
+          fi
+          version="$(python3 tools/release.py check "$TAG")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "Release $TAG: version $version at $commit"
+
+      - name: Require green CI for the tagged commit
+        shell: bash
+        env:
+          COMMIT: ${{ steps.metadata.outputs.commit }}
+        run: |
+          set -euo pipefail
+          deadline=$((SECONDS + 2700))
+          while true; do
+            runs="$(gh run list \
+              --workflow=ci.yml \
+              --event=push \
+              --branch=main \
+              --commit="$COMMIT" \
+              --limit=1 \
+              --json status,conclusion,headSha,url)"
+            if [[ "$runs" == "[]" ]]; then
+              if (( SECONDS >= deadline )); then
+                echo "::error::No main-branch CI run appeared for $COMMIT." >&2
+                exit 1
+              fi
+              sleep 15
+              continue
+            fi
+            head_sha="$(jq -r '.[0].headSha // ""' <<<"$runs")"
+            if [[ "$head_sha" != "$COMMIT" ]]; then
+              echo "::error::CI query returned $head_sha, expected $COMMIT." >&2
+              exit 1
+            fi
+            status="$(jq -r '.[0].status' <<<"$runs")"
+            conclusion="$(jq -r '.[0].conclusion // ""' <<<"$runs")"
+            if [[ "$status" == completed ]]; then
+              if [[ "$conclusion" == success ]]; then
+                echo "CI succeeded for $COMMIT."
+                exit 0
+              fi
+              echo "::error::CI concluded $conclusion for $COMMIT." >&2
+              exit 1
+            fi
+            if (( SECONDS >= deadline )); then
+              echo "::error::CI did not complete within 45 minutes." >&2
+              exit 1
+            fi
+            sleep 15
+          done
+
+      - name: Build release notes and archives
+        shell: bash
+        env:
+          VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-bundle/assets
+          python3 tools/release.py notes "$TAG" release-bundle/notes.md
+          python3 tools/release.py package "$TAG" release-bundle/assets
+          test -s release-bundle/notes.md
+          (
+            cd release-bundle/assets
+            sha256sum -c SHA256SUMS
+          )
+
+      - name: Verify source archive
+        shell: bash
+        env:
+          VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/release-source"
+          rm -rf "$root"
+          mkdir -p "$root"
+          tar -xzf "release-bundle/assets/mpmc-lean-$VERSION.tar.gz" -C "$root"
+          source_tree="$root/mpmc-lean-$VERSION"
+          test -f "$source_tree/CMakeLists.txt"
+          test -f "$source_tree/include/mpmc/detail/kernel.inc"
+          test -f "$source_tree/lakefile.toml"
+          cmake -S "$source_tree" -B "$root/build" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DMPMC_BUILD_TESTS=ON \
+            -DMPMC_BUILD_BENCH=ON
+          cmake --build "$root/build" -j 4
+          ctest --test-dir "$root/build" --output-on-failure
+          cmake --install "$root/build" --prefix "$root/install"
+          test -f "$root/install/share/doc/mpmc/LICENSE"
+          test -f "$root/install/share/doc/mpmc/NOTICE"
+          test -f "$root/install/share/doc/mpmc/CHANGELOG.md"
+          cmake -S "$source_tree/tests/consumer" -B "$root/consumer" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$root/install"
+          cmake --build "$root/consumer" -j 4
+          "$root/consumer/mpmc_consumer"
+          "$root/consumer/mpmc_consumer_ffi"
+          "$root/consumer/mpmc_consumer_cpp"
+          export PKG_CONFIG_PATH="$root/install/lib/pkgconfig"
+          test "$(pkg-config --modversion mpmc)" = "$VERSION"
+          read -r -a cflags <<<"$(pkg-config --cflags mpmc)"
+          read -r -a libs <<<"$(pkg-config --libs mpmc)"
+          cc -std=c11 "${cflags[@]}" "$source_tree/tests/consumer/main.c" \
+            "${libs[@]}" -o "$root/pkg-consumer"
+          c++ -std=c++17 "${cflags[@]}" "$source_tree/tests/consumer/main.cpp" \
+            "${libs[@]}" -o "$root/pkg-consumer-cpp"
+          "$root/pkg-consumer"
+          "$root/pkg-consumer-cpp"
+
+      - name: Verify headers archive
+        shell: bash
+        env:
+          VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/release-headers"
+          rm -rf "$root"
+          mkdir -p "$root"
+          tar -xzf "release-bundle/assets/mpmc-lean-$VERSION-headers.tar.gz" -C "$root"
+          headers="$root/mpmc-lean-$VERSION"
+          test -f "$headers/include/mpmc.h"
+          test -f "$headers/include/mpmc/detail/impl.h"
+          test -f "$headers/LICENSE"
+          test -f "$headers/NOTICE"
+          test -f "$headers/CHANGELOG.md"
+          test -f "$headers/docs/proof.md"
+          extra=''
+          atomic=''
+          case "$(uname -m)" in
+            x86_64|amd64) extra='-mcx16'; atomic='-latomic' ;;
+          esac
+          cc -std=c11 $extra -I"$headers/include" \
+            tests/consumer/main.c $atomic -o "$root/header-consumer"
+          c++ -std=c++17 $extra -I"$headers/include" \
+            tests/consumer/main.cpp $atomic -o "$root/header-consumer-cpp"
+          "$root/header-consumer"
+          "$root/header-consumer-cpp"
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-bundle
+          path: release-bundle/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish GitHub release
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      VERSION: ${{ needs.verify.outputs.version }}
+      COMMIT: ${{ needs.verify.outputs.commit }}
+    steps:
+      - name: Download release bundle
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-bundle
+          path: release-bundle
+
+      - name: Check bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s release-bundle/notes.md
+          (
+            cd release-bundle/assets
+            sha256sum -c SHA256SUMS
+          )
+          test -f "release-bundle/assets/mpmc-lean-$VERSION.tar.gz"
+          test -f "release-bundle/assets/mpmc-lean-$VERSION-headers.tar.gz"
+          test -f "release-bundle/assets/SHA256SUMS"
+
+      - name: Verify remote tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="$(gh api "repos/$GH_REPO/git/ref/tags/$TAG")"
+          test "$(jq -r .object.type <<<"$ref")" = tag
+          tag_sha="$(jq -r .object.sha <<<"$ref")"
+          tag_object="$(gh api "repos/$GH_REPO/git/tags/$tag_sha")"
+          test "$(jq -r .object.type <<<"$tag_object")" = commit
+          test "$(jq -r .object.sha <<<"$tag_object")" = "$COMMIT"
+
+      - name: Create draft release
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_state() {
+            local error_file value status
+            error_file="$(mktemp)"
+            set +e
+            value="$(gh release view "$TAG" --json isDraft --jq '.isDraft' 2>"$error_file")"
+            status=$?
+            set -e
+            if [[ "$status" -eq 0 ]]; then
+              rm -f "$error_file"
+              printf '%s\n' "$value"
+              return 0
+            fi
+            if grep -qi 'release not found' "$error_file"; then
+              rm -f "$error_file"
+              return 0
+            fi
+            cat "$error_file" >&2
+            rm -f "$error_file"
+            return 1
+          }
+          if ! existing="$(release_state)"; then
+            echo "::error::Could not determine whether $TAG exists." >&2
+            exit 1
+          fi
+          if [[ "$existing" == true ]]; then
+            gh release delete "$TAG" --yes
+          elif [[ "$existing" == false ]]; then
+            echo "::error::Published release $TAG already exists." >&2
+            exit 1
+          elif [[ -n "$existing" ]]; then
+            echo "::error::Unexpected release state for $TAG: $existing" >&2
+            exit 1
+          fi
+          gh release create "$TAG" \
+            "release-bundle/assets/mpmc-lean-$VERSION.tar.gz" \
+            "release-bundle/assets/mpmc-lean-$VERSION-headers.tar.gz" \
+            "release-bundle/assets/SHA256SUMS" \
+            --draft \
+            --verify-tag \
+            --title "mpmc-lean $VERSION" \
+            --notes-file release-bundle/notes.md
+          expected_names="$(printf '%s\n' \
+            SHA256SUMS \
+            "mpmc-lean-$VERSION.tar.gz" \
+            "mpmc-lean-$VERSION-headers.tar.gz" | LC_ALL=C sort)"
+          asset_names=''
+          for _ in {1..30}; do
+            asset_names="$(gh release view "$TAG" --json assets --jq '.assets[].name' | LC_ALL=C sort)"
+            if [[ "$asset_names" == "$expected_names" ]]; then
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$asset_names" != "$expected_names" ]]; then
+            echo "::error::Draft asset set does not match the expected files." >&2
+            gh release delete "$TAG" --yes
+            exit 1
+          fi
+
+      - name: Verify draft asset bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p downloaded
+          gh release download "$TAG" --dir downloaded
+          cmp release-bundle/assets/SHA256SUMS downloaded/SHA256SUMS
+          (
+            cd downloaded
+            sha256sum -c SHA256SUMS
+          )
+          test -f "downloaded/mpmc-lean-$VERSION.tar.gz"
+          test -f "downloaded/mpmc-lean-$VERSION-headers.tar.gz"
+
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release edit "$TAG" --draft=false
+          test "$(gh release view "$TAG" --json isDraft --jq '.isDraft')" = false
+          test "$(gh release view "$TAG" --json assets --jq '.assets[].name' | LC_ALL=C sort)" = "$(printf '%s\n' SHA256SUMS "mpmc-lean-$VERSION.tar.gz" "mpmc-lean-$VERSION-headers.tar.gz" | LC_ALL=C sort)"

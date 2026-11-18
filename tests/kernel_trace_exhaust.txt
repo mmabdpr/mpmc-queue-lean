@@ -1,0 +1,402 @@
+capacity 8
+limit 12
+push 10
+push 5
+pop
+push 43
+push 94
+push 61
+push 4
+pop
+push 90
+push 25
+push 48
+pop
+push 38
+push 25
+pop
+push 55
+pop
+pop
+pop
+push 31
+push 74
+push 33
+push 72
+pop
+push 70
+pop
+push 56
+push 55
+pop
+push 97
+push 88
+push 95
+push 18
+push 61
+push 60
+push 39
+pop
+push 29
+push 12
+pop
+push 30
+push 77
+push 44
+push 39
+push 18
+push 77
+pop
+push 71
+push 70
+pop
+push 28
+pop
+push 22
+push 9
+push 12
+push 55
+push 14
+pop
+pop
+push 71
+push 2
+push 93
+push 52
+pop
+push 82
+push 65
+pop
+push 27
+push 46
+pop
+pop
+push 3
+push 22
+push 69
+push 32
+pop
+pop
+push 45
+push 56
+pop
+pop
+push 49
+push 76
+pop
+push 54
+push 33
+push 56
+push 3
+push 18
+push 29
+pop
+pop
+push 82
+push 29
+push 68
+push 27
+push 74
+pop
+pop
+push 87
+push 2
+push 53
+pop
+push 31
+push 18
+push 29
+pop
+pop
+push 46
+push 25
+push 44
+push 87
+pop
+push 41
+push 84
+pop
+push 58
+push 5
+push 84
+push 79
+push 70
+push 89
+push 56
+pop
+push 54
+pop
+push 56
+push 99
+push 62
+pop
+push 12
+push 71
+push 10
+pop
+push 0
+pop
+push 86
+pop
+push 68
+push 91
+push 62
+pop
+pop
+pop
+push 98
+pop
+pop
+pop
+push 58
+push 37
+push 64
+push 59
+push 94
+push 81
+push 8
+push 75
+pop
+push 49
+pop
+push 35
+push 94
+push 5
+push 0
+pop
+push 50
+push 9
+pop
+pop
+push 26
+push 41
+push 28
+push 79
+pop
+pop
+pop
+pop
+push 62
+push 37
+push 44
+pop
+push 82
+pop
+push 56
+push 15
+pop
+push 57
+push 8
+pop
+push 34
+push 49
+push 80
+pop
+push 18
+pop
+push 32
+pop
+pop
+push 93
+push 12
+pop
+push 98
+pop
+push 60
+push 59
+pop
+pop
+pop
+push 43
+push 74
+push 45
+push 0
+pop
+pop
+push 37
+push 84
+push 55
+push 70
+push 81
+push 8
+pop
+push 34
+push 57
+pop
+push 15
+push 30
+push 57
+push 52
+push 63
+push 6
+push 5
+push 48
+pop
+push 30
+push 49
+pop
+push 87
+push 18
+push 33
+pop
+push 43
+push 14
+push 89
+push 80
+push 19
+pop
+push 69
+push 20
+push 55
+push 74
+push 77
+push 96
+pop
+pop
+push 13
+pop
+pop
+pop
+pop
+push 92
+pop
+push 86
+push 45
+push 76
+push 35
+push 6
+push 5
+pop
+push 67
+pop
+push 61
+push 32
+push 79
+push 10
+push 77
+push 72
+push 35
+push 42
+push 25
+pop
+push 83
+pop
+pop
+push 16
+push 7
+push 58
+push 9
+push 68
+push 15
+pop
+push 1
+pop
+pop
+pop
+pop
+push 64
+push 75
+push 38
+pop
+push 24
+push 67
+pop
+pop
+push 32
+pop
+push 2
+push 65
+pop
+push 63
+pop
+push 17
+push 20
+pop
+push 62
+push 9
+push 48
+push 11
+push 6
+pop
+push 40
+push 99
+push 86
+pop
+push 84
+push 59
+push 38
+push 45
+push 28
+pop
+push 78
+pop
+push 28
+pop
+push 78
+pop
+pop
+pop
+push 66
+push 89
+push 20
+pop
+push 34
+pop
+push 96
+push 7
+pop
+push 29
+push 60
+pop
+push 58
+push 93
+push 92
+push 3
+push 58
+push 1
+pop
+pop
+push 26
+pop
+push 76
+push 47
+pop
+pop
+push 12
+push 59
+push 74
+push 97
+pop
+push 71
+pop
+push 21
+pop
+push 7
+push 26
+push 9
+push 96
+push 63
+push 42
+push 9
+pop
+pop
+push 70
+pop
+pop
+push 79
+push 34
+pop
+push 92
+push 11
+push 10
+push 5
+push 20
+push 67
+push 50
+push 1
+pop
+push 43
+pop
+push 25
+push 60
+push 71
