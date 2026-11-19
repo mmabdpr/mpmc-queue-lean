@@ -27,6 +27,7 @@ In scope:
 - the public C API in `include/mpmc.h` and the C++ wrapper;
 - the hand-written allocation/initialization wrapper in `src/mpmc.c` and
   `include/mpmc/detail/impl.h`;
+- the safe Rust wrapper in `src/lib.rs` and its build script;
 - the generated kernel in `include/mpmc/detail/kernel.inc`;
 - the build, install, and packaging files.
 

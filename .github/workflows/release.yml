@@ -49,6 +49,13 @@ jobs:
           fetch-tags: true
           persist-credentials: false
 
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install 1.74.0 --profile minimal --no-self-update
+          rustup default 1.74.0
+          rustc --version
+          cargo --version
+
       - name: Validate tag and versions
         id: metadata
         shell: bash
@@ -166,6 +173,12 @@ jobs:
           "$root/consumer/mpmc_consumer"
           "$root/consumer/mpmc_consumer_ffi"
           "$root/consumer/mpmc_consumer_cpp"
+          if [[ -f "$source_tree/Cargo.toml" ]]; then
+            cargo test --manifest-path "$source_tree/Cargo.toml" --all-targets --locked
+            cargo test --manifest-path "$source_tree/Cargo.toml" --release --all-targets --locked
+            cargo test --manifest-path "$source_tree/Cargo.toml" --doc --locked
+            (cd "$source_tree" && cargo package --locked)
+          fi
           export PKG_CONFIG_PATH="$root/install/lib/pkgconfig"
           test "$(pkg-config --modversion mpmc)" = "$VERSION"
           read -r -a cflags <<<"$(pkg-config --cflags mpmc)"

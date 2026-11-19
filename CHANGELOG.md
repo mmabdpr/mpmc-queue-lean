@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.1
+
+- Add the safe `mpmc-lean` Rust crate at the repository root. It compiles the
+  same generated C kernel, exposes `Queue` with non-blocking `push`/`pop`, and
+  is `Send + Sync` without requiring callers to use `unsafe`.
+- Support baseline Linux arm64, including non-LSE hardware, with Clang 18.
+  Clang's baseline lowering uses LDXP/STXP; GCC arm64 is rejected because
+  its libatomic lock-freedom depends on the runtime version.
+- Add Rust FIFO, edge-value, randomized sequential, mixed-role, and concurrent
+  exactly-once tests, including optimized (`--release`) coverage and Linux
+  x86-64 Clang, a Linux arm64 Clang CI job, a GCC arm64 rejection check, and
+  macOS CI jobs.
+- Add Rust source-archive verification, Cargo dependency updates, and release
+  version/lockfile documentation.
+
 ## 0.1.0 - 2026-11-18
 
 - First public release of `mpmc-lean`.

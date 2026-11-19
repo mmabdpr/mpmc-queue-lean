@@ -5,12 +5,13 @@
 
 A bounded multi-producer/multi-consumer queue **designed to be lock-free,
 modeled in Lean 4 and code-generated into C**, with a **machine-checked
-safety and FIFO core**, shipped as a single public header for C and C++. The
-implementation is the same cell/marker design as the companion C++ queue
-(`mpmc-queue`): a power-of-two ring of 16-byte cells, one 16-byte
-compare-exchange per publication, monotone index hints that any participant
-may help advance, and a 64-bit payload. Push and pop never allocate, never
-take a lock, and do not block on a particular thread by design.
+safety and FIFO core**, shipped as a single public header for C and C++ and a
+safe Rust crate. The implementation is the same cell/marker design as the
+companion C++ queue (`mpmc-queue`): a power-of-two ring of 16-byte cells, one
+16-byte compare-exchange per publication, monotone index hints that any
+participant may help advance, and a 64-bit payload. Push and pop never
+allocate, never take a lock, and do not block on a particular thread by
+design.
 
 ```c
 #include "mpmc.h"
@@ -40,9 +41,17 @@ if (q.push(42)) {
 }
 ```
 
+Rust uses the safe crate in this repository:
+
+```rust
+let q = mpmc_lean::Queue::new(4096).expect("queue");
+q.push(42).expect("space");
+assert_eq!(q.pop(), Some(42));
+```
+
 Capacity, horizon, slot arithmetic, hint helping, and the atomic protocol are
-implementation details. The public surface is the four C functions and the
-C++ class.
+implementation details. The public surface is the four C functions, the C++
+class, and the Rust `Queue` type.
 
 ## Status
 
@@ -61,6 +70,7 @@ C++ class.
 | Progress | `psi` finite event bound and changed-cell event witnesses proved; lock-freedom/fair-scheduler liveness not mechanized |
 | Generated C kernel | Emitted from the Lean IR; checked in; differentially tested |
 | C wrapper, allocation, ABI layout | Hand-written C; tested (ASan/UBSan/TSan) |
+| Rust safe wrapper | Hand-written safe ownership/FFI layer; tested; not proved |
 
 Claim:
 
@@ -73,10 +83,11 @@ Claim:
 > fixed-role logical workers.
 >
 > The generated C is a transcription of the kernel. The printer, compiler and
-> atomic lowering, allocator/initialization wrapper, C11/C++ lowering, and
-> kernel-level progress remain trusted or unmechanized. No machine-checked
-> lock-freedom or liveness theorem is claimed. See `docs/proof.md` for the
-> theorem list, hypotheses, and trusted computing base.
+> atomic lowering, allocator/initialization wrapper, C11/C++ lowering, the
+> Rust ownership/FFI wrapper, and kernel-level progress remain trusted or
+> unmechanized. No machine-checked lock-freedom or liveness theorem is
+> claimed. See `docs/proof.md` for the theorem list, hypotheses, and trusted
+> computing base.
 
 `docs/proof.md` lists every theorem, the trusted computing base, and what is
 **not** proved. Do not read this as "the C code is proved".
@@ -104,7 +115,8 @@ throughput versus the reference's relaxed-hint profile: 4P/1C and 1P/4C are
 ahead, 4P/4C is parity, and 1P/1C is 43% behind. The comparison uses the
 reference's `Index=uint32_t` profile and a compile-time capacity; this library
 keeps a 64-bit index and a runtime capacity, so it is same-shape but not
-bit-for-bit. x86-64 performance is unmeasured.
+bit-for-bit. x86-64 performance is unmeasured. The Rust crate calls the
+out-of-line C ABI and is not separately benchmarked here.
 
 The slot type has a 128-byte stride (`include/mpmc/detail/impl.h`,
 regression-tested by `tests/test_layout.c`). See `docs/benchmarks.md` for raw
@@ -131,9 +143,15 @@ runs, caveats, and the layout history.
   lock-free (for example LSE on arm64); otherwise `mpmc_create` returns
   `NULL` rather than silently using locks. The x86-64 build needs a compiler
   that lowers 16-byte atomics to `cmpxchg16b` and a CX16-capable CPU (see
-  `docs/api.md`).
+  `docs/api.md`). An LSE-enabled C/C++ build must run on an LSE-capable CPU.
+  The Rust crate builds baseline arm64 with Clang, so it also runs on non-LSE
+  hardware. GCC arm64 is rejected by the Rust build because its libatomic
+  lock-freedom depends on the runtime version.
 - Single-header use for both C and C++; the static library exports the same
   four symbols for FFI.
+- Safe Rust crate at the repository root: `Queue` owns the C handle, implements
+  `Send + Sync`, and exposes non-blocking `push`/`pop` without requiring
+  `unsafe` from callers.
 
 ## Platforms
 
@@ -147,7 +165,10 @@ runs, caveats, and the layout history.
 | Windows / MSVC | unsupported; CMake rejects non-GCC/Clang |
 
 The C++ wrapper uses exceptions (`std::invalid_argument`, `std::runtime_error`);
-compile C++ with exceptions enabled. The C API does not use exceptions.
+compile C++ with exceptions enabled. The C API does not use exceptions. The
+Rust crate is tested on Linux x86-64 with GCC and Clang, Linux arm64 baseline
+with Clang 18, and macOS arm64; it rejects GCC arm64, Windows/MSVC, and other
+unsupported targets at build time.
 
 ## Build
 
@@ -188,6 +209,30 @@ default to `ON` only when mpmc is the top-level project. Cross-compiling
 cannot run the lock-free probe: pass `-DMPMC_LOCKFREE=TRUE` (and
 `-DMPMC_LOCKFREE_LIBATOMIC=TRUE` if `-latomic` is required) to override it.
 
+### Rust crate
+
+The crate is at the repository root and compiles the same `src/mpmc.c` and
+generated kernel directly; no CMake build or installed C library is required.
+It needs a GCC or Clang C11 compiler and Rust 1.74 or newer.
+
+```sh
+cargo test --all-targets --locked
+cargo test --release --all-targets --locked
+cargo test --doc --locked
+cargo package --locked
+```
+
+The crate is shipped in the repository and will be included in future tagged
+source archives. It is not yet published to crates.io; from a checkout, use it
+as a path dependency:
+
+```toml
+[dependencies]
+mpmc-lean = { path = "path/to/mpmc-queue-lean" }
+```
+
+See `docs/rust.md` for the safe API, platform requirements, and proof scope.
+
 ### Sanitizers
 
 ```sh
@@ -227,7 +272,8 @@ cc app.c $(pkg-config --cflags --libs mpmc)
 
 ## API
 
-The complete public surface is four C functions and one C++ class:
+The complete public surface is four C functions, one C++ class, and the Rust
+`Queue`, `CreateError`, and `PushError` types:
 
 ```c
 typedef struct mpmc_queue mpmc_queue;
@@ -245,7 +291,8 @@ horizon); `mpmc_pop` returns `false` when it is empty and writes `*value` only
 on success. `mpmc_destroy(NULL)` is a no-op. `mpmc_push` and `mpmc_pop` do
 not block; `mpmc_create` and `mpmc_destroy` call the allocator.
 
-See `docs/api.md` for the concurrency contract, portability, and examples.
+See `docs/api.md` for the C/C++ concurrency contract, portability, and
+examples; see `docs/rust.md` for the Rust API and proof scope.
 
 ## Repository layout
 
@@ -271,6 +318,11 @@ Mpmc/Progress.lean      conditional retry-charge counting lemma
 Mpmc/History.lean       real-time history packaging
 Mpmc/Codegen.lean       C printer for the kernel
 Mpmc/KernelTest.lean    deterministic trace generator
+Cargo.toml              Rust crate manifest and build metadata
+build.rs                compiles the C kernel for Cargo
+src/lib.rs              safe Rust Queue wrapper
+docs/rust.md            Rust API, platform, and TCB documentation
+tests/rust_api.rs       Rust FIFO, error, and concurrency tests
 include/mpmc.h          the only public header
 include/mpmc/detail/    private layout, atomics, generated kernel
 src/mpmc.c              four exported symbols for FFI
@@ -298,8 +350,10 @@ tools/                  release validation and packaging
 
 Tagged releases are built, tested, and published by
 `.github/workflows/release.yml`. The workflow requires a green `CI` run for
-the tagged commit and publishes source, headers, and checksum archives. See
-`RELEASING.md` for the tag and recovery procedure.
+the tagged commit and publishes source, headers, and checksum archives. Source
+archives from this commit onward include the Rust crate; the headers archive
+remains the C/C++ header-only package. The published v0.1.0 archive predates
+the crate. See `RELEASING.md` for the tag and recovery procedure.
 
 ## Security
 

@@ -1,0 +1,50 @@
+# Copyright (c) 2026 Mohammad Mahdi Abdollahpour.
+# SPDX-License-Identifier: CPAL-1.0
+# The contents of this file are subject to the Common Public Attribution
+# License Version 1.0 (the "License"); you may not use this file except in
+# compliance with the License. You may obtain a copy of the License at
+# https://opensource.org/license/cpal-1-0.
+# The Original Code is mpmc-lean. The Initial Developer is Mohammad Mahdi
+# Abdollahpour. See LICENSE and NOTICE.
+
+[package]
+name = "mpmc-lean"
+version = "0.1.1"
+edition = "2021"
+rust-version = "1.74"
+authors = ["Mohammad Mahdi Abdollahpour <git@mohammadmahdi.com>"]
+description = "Safe Rust wrapper for mpmc-lean, a bounded MPMC queue with a Lean-checked SC kernel-event core."
+documentation = "https://docs.rs/mpmc-lean"
+readme = "docs/rust.md"
+homepage = "https://github.com/mmabdpr/mpmc-queue-lean"
+repository = "https://github.com/mmabdpr/mpmc-queue-lean"
+license = "CPAL-1.0"
+keywords = ["mpmc", "queue", "lock-free", "concurrent", "ffi"]
+categories = ["concurrency", "data-structures"]
+links = "mpmc"
+build = "build.rs"
+
+# Keep the published crate focused on the Rust wrapper and the exact C
+# implementation it compiles.  The repository's full sources stay on GitHub.
+include = [
+    "Cargo.toml",
+    "build.rs",
+    "src/lib.rs",
+    "src/mpmc.c",
+    "include/mpmc.h",
+    "include/mpmc/detail/impl.h",
+    "include/mpmc/detail/kernel.inc",
+    "tests/rust_api.rs",
+    "docs/rust.md",
+    "LICENSE",
+    "NOTICE",
+    "README.md",
+    "CHANGELOG.md",
+]
+
+[build-dependencies]
+cc = "1.2"
+
+[lints.rust]
+missing_docs = "warn"
+unsafe_op_in_unsafe_fn = "deny"

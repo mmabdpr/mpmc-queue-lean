@@ -148,9 +148,20 @@ if (q.pop(v)) { /* v == 1 */ }
   may fail, or `mpmc_create` returns `NULL` because the 16-byte CAS is not
   lock-free. GCC builds on arm64 may also need an LSE-capable `-march` and
   `-latomic`. Apple silicon is native. Linux arm64 uses the same source path
-  and is covered by CI with LSE enabled.
+  and is covered by CI with LSE enabled. An LSE-enabled C/C++ build must run
+  on an LSE-capable CPU; the C constructor's atomic predicate is compile-time.
+  The Rust crate builds baseline arm64 with Clang, so it also runs on non-LSE
+  hardware. GCC arm64 is rejected by the Rust build because libatomic
+  lock-freedom depends on the runtime version.
 - The queue uses 128-byte slots and separates the write and read hints by
   128 bytes to avoid false sharing. `tests/test_layout.c` checks the layout.
+
+## Rust
+
+The repository also contains the safe `mpmc-lean` Rust crate. It compiles the
+same C ABI and generated kernel and exposes `mpmc_lean::Queue` with safe,
+non-blocking `push`/`pop` methods. The raw FFI pointer is private. See
+`docs/rust.md` for the API, platform support, and the proof/TCB boundary.
 
 ## FFI
 

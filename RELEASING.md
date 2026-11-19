@@ -17,11 +17,16 @@ The release workflow cannot enable this setting.
 
 ## Prepare
 
-1. Update the version in `CMakeLists.txt`, `lakefile.toml`, and
-   `CHANGELOG.md`.
-2. Commit and push `main`.
-3. Wait for the `CI` workflow to pass on that exact commit.
-4. Confirm the working tree is clean and `main` matches `origin/main`.
+1. On a `dev/<topic>` branch, update the version in `CMakeLists.txt`,
+   `lakefile.toml`, `Cargo.toml`, and `CHANGELOG.md`.
+2. Run `cargo check --all-targets` to refresh the root `Cargo.lock`, then
+   commit the manifest and lockfile together on the development branch.
+3. Push the development branch, address review findings, and wait for the
+   complete `CI` matrix to pass on its head.
+4. Squash-merge the reviewed development branch into `main` as one commit, as
+   required by `AGENTS.md`.
+5. Wait for the `CI` workflow to pass on that exact `main` commit.
+6. Confirm the working tree is clean and `main` matches `origin/main`.
 
 ## Publish
 
@@ -30,6 +35,7 @@ version=X.Y.Z
 git switch main
 git pull --ff-only
 test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+test -z "$(git status --porcelain)"
 git tag -a "v$version" -m "mpmc-lean $version"
 git push origin "v$version"
 ```
@@ -38,7 +44,7 @@ The tag starts the release workflow. It checks that:
 
 - the tag is annotated;
 - its commit is reachable from `origin/main`;
-- the CMake, Lake, and changelog versions agree;
+- the CMake, Lake, crate, and changelog versions agree;
 - `CI` passed for the tagged commit.
 
 It then builds source and headers archives, checks their contents, builds and
@@ -51,6 +57,28 @@ Assets:
 - `mpmc-lean-X.Y.Z.tar.gz`: complete tagged source tree.
 - `mpmc-lean-X.Y.Z-headers.tar.gz`: headers, documentation, and licenses.
 - `SHA256SUMS`: checksums for both archives.
+
+## Rust crate
+
+For tags that include the crate, the source archive contains the `mpmc-lean`
+crate. The GitHub release workflow runs its debug and release tests and package
+verification but does not publish to crates.io. The published `v0.1.0` release
+predates the crate; its first crates.io publication must use the next version.
+After the GitHub release is green, publish the crate only from its tagged
+commit:
+
+```sh
+git fetch --force --tags origin main
+git checkout "v$version"
+python3 tools/release.py publish-check "v$version"
+cargo package --locked
+cargo publish --dry-run --locked
+cargo publish --locked
+```
+
+Do not publish a crate version that differs from the tagged C/Lean version.
+`tools/release.py` validates the CMake, Lake, crate, and changelog versions
+when the crate manifest is present.
 
 ## Verify
 

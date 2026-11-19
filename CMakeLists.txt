@@ -7,7 +7,7 @@
 # The Original Code is mpmc-lean. The Initial Developer is Mohammad Mahdi
 # Abdollahpour. See LICENSE and NOTICE.
 cmake_minimum_required(VERSION 3.20)
-project(mpmc_lean VERSION 0.1.0 LANGUAGES C)
+project(mpmc_lean VERSION 0.1.1 LANGUAGES C)
 
 if(NOT CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   message(FATAL_ERROR

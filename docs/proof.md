@@ -740,10 +740,12 @@ Not proved:
   implementation uses seq_cst cell atomics and acquire/release hints, documented in
   `docs/algorithm.md`; the lowering from the C11/C++ operations to the
   machine is not mechanized.
-- **Wrapper/layout/allocation**: the magic check, `aligned_alloc`, header
+- **Wrappers/layout/allocation**: the magic check, `aligned_alloc`, header
   offsets, slot stride, and initialization are tested, not proved. The
   `static_assert`s pin the offsets, and `tests/test_layout.c` checks the
-  128-byte slot stride at runtime.
+  128-byte slot stride at runtime. The Rust crate's ownership, lifetime, and
+  `Send`/`Sync` reasoning is a hand-written FFI layer tested by
+  `tests/rust_api.rs`; it is not part of the Lean proof.
 - **16-byte atomicity/lock-freedom**: assumed from the platform and checked
   at creation. On x86-64, `mpmc_create` checks CPUID CX16. Clang uses
   `__atomic_is_lock_free` on an aligned probe. GCC x86-64 with `-mcx16` is
@@ -765,10 +767,15 @@ Not proved:
    GCC x86-64 with `-mcx16` is accepted after CPUID; this relies on GNU
    libatomic's CX16 runtime dispatch for 16-byte operations. The `__atomic` builtins lower the
    cell CAS to a single 16-byte `casp` (`caspl`/`caspa`) on arm64 with LSE;
-   baseline arm64 uses an `ldxp`/`stxp` loop or libatomic. On x86-64 they need
+   baseline arm64 uses an `ldxp`/`stxp` loop or libatomic. The Rust arm64
+   build requires Clang, whose baseline lowering uses LDXP/STXP (inline or
+   outlined); LSE is used only if a user explicitly requests it. On x86-64
+   they need
    `cmpxchg16b`/`-mcx16`.
-3. **The wrapper** (`src/mpmc.c` and `include/mpmc/detail/impl.h`):
-   allocation, header, initialization, validation. Tested by `tests/`.
+3. **The C and Rust wrappers** (`src/mpmc.c`, `src/lib.rs`, `build.rs`, and
+   `include/mpmc/detail/impl.h`): allocation, header, initialization,
+   validation, and the Rust ownership/FFI boundary. Tested by `tests/` and
+   `tests/rust_api.rs`; the wrapper code is not proved.
 4. **The Lean kernel and standard axioms.** No `sorryAx`. `#print axioms`
    reports `propext`, `Quot.sound`, and `Classical.choice`; these are Lean's
    standard axioms, not extra assumptions about the queue.

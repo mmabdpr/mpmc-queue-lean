@@ -78,6 +78,112 @@ jobs:
           lake exe mpmc-kernel-trace
           test -z "$(git status --porcelain -- include/mpmc/detail/kernel.inc 'tests/kernel_trace*.txt')"
 
+  rust:
+    name: Rust ${{ matrix.toolchain }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - toolchain: "1.74.0"
+            cc: gcc
+          - toolchain: stable
+            cc: clang-18
+    env:
+      CARGO_TERM_COLOR: always
+      CC: ${{ matrix.cc }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install "${{ matrix.toolchain }}" \
+            --profile minimal --no-self-update
+          rustup default "${{ matrix.toolchain }}"
+          rustc --version
+          cargo --version
+
+      - name: Test
+        run: cargo test --all-targets --locked
+
+      - name: Release test
+        run: cargo test --release --all-targets --locked
+
+      - name: Documentation tests
+        run: cargo test --doc --locked
+
+      - name: Format and lint
+        if: matrix.toolchain == 'stable'
+        run: |
+          rustup component add rustfmt clippy
+          cargo fmt --all -- --check
+          cargo clippy --all-targets -- -D warnings
+
+      - name: Package
+        if: matrix.toolchain == 'stable'
+        run: cargo package --locked
+
+  rust_arm:
+    name: Rust Linux arm64
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    env:
+      CARGO_TERM_COLOR: always
+      CC: clang-18
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Test
+        run: cargo test --all-targets --locked
+
+      - name: Release test
+        run: cargo test --release --all-targets --locked
+
+      - name: Documentation tests
+        run: cargo test --doc --locked
+
+      - name: Reject GCC arm64
+        env:
+          CC: gcc
+        run: |
+          if cargo build --locked 2>gcc-arm64.log; then
+            echo "GCC arm64 build unexpectedly succeeded" >&2
+            exit 1
+          fi
+          grep -q "requires Clang on Linux arm64" gcc-arm64.log
+
+  rust_macos:
+    name: Rust macOS arm64
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Test
+        run: |
+          cargo test --all-targets --locked
+          cargo test --release --all-targets --locked
+
+      - name: Documentation tests
+        run: cargo test --doc --locked
+
   c:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}

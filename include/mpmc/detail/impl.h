@@ -47,7 +47,7 @@
 #endif
 
 #define MPMC_MAGIC UINT64_C(0x4d504d434c45414e) /* "MPMCLEAN" */
-/* Layout/ABI version, independent of the 0.1.0 release version. */
+/* Layout/ABI version, independent of the release version. */
 #define MPMC_VERSION 1u
 #define MPMC_ABI_TAG 1u
 #define MPMC_HEADER_BYTES 384u

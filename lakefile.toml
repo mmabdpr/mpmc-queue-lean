@@ -6,7 +6,7 @@
 # The Original Code is mpmc-lean. The Initial Developer is Mohammad Mahdi
 # Abdollahpour. See LICENSE and NOTICE.
 name = "mpmc"
-version = "0.1.0"
+version = "0.1.1"
 defaultTargets = ["Mpmc"]
 
 [[lean_lib]]

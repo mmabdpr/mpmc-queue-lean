@@ -20,6 +20,7 @@ compile_commands.json
 *.swp
 *.log
 .cache/
+target/
 
 stage/
 stage-*/
